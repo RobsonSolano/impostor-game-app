@@ -40,3 +40,23 @@ Regra 9 do `AGENTS.md`, e cumprida à risca: todo `haptics.*` é fire-and-forget
 ### 7. `expo-doctor` e `npm run verify` não fazem parte de nenhum pipeline
 
 Os três comandos existem e estão documentados no README, mas nenhum roda automaticamente (não há CI configurado neste repositório). `npm run lint` depende de `eslint`/`eslint-config-expo` estarem instalados via `npm install` depois de qualquer mudança em `package.json` — o tipo de coisa fácil de esquecer quando várias pessoas (ou agentes) editam o `package.json` na mesma janela de tempo.
+
+## Sem OTA (`expo-updates`) — decisão consciente
+
+O `expo-updates` não está instalado, e os perfis do `eas.json` não declaram
+`channel`. Isso significa que **toda mudança exige um build novo**, inclusive
+trocar as credenciais do Supabase: `EXPO_PUBLIC_*` é inlinado pelo Metro no
+bundle, não lido em tempo de execução.
+
+Vale instalar quando o banco de produção estiver definido, porque aí OTA resolve
+exatamente o problema mais provável deste projeto: apontar o app para outro
+projeto Supabase sem reinstalar o APK em cada celular da mesa.
+
+```bash
+npx expo install expo-updates
+npx eas-cli update:configure   # precisa editar app.config.ts à mão: é config dinâmica
+```
+
+Não foi feito agora porque acrescentaria dependência, `runtimeVersion` e uma
+política de canal que não dá para validar sem um build a mais — e a configuração
+atual está verificada como está.
