@@ -1,8 +1,8 @@
-# Jogo do Impostor — mobile
+# Impostor — mobile
 
 Todos recebem a mesma palavra secreta. Menos um. O impostor não sabe qual é, e tem que blefar a partir das dicas que os outros escrevem — sem se entregar.
 
-Este é o porte para celular do [Jogo do Impostor](../impostor): mesmo banco, mesmas regras, mesma identidade visual — adaptado para uma mesa de bar onde o aparelho passa de mão em mão, e gamificado com vibração.
+Este é o porte para celular do [Impostor](../impostor): mesmo banco, mesmas regras, mesma identidade visual — adaptado para uma mesa de bar onde o aparelho passa de mão em mão, e gamificado com vibração.
 
 ## Como funciona uma partida
 

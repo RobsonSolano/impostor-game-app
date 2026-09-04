@@ -55,7 +55,7 @@ export function LobbyPhase({ room, players, me, isHost }: PhaseProps) {
     // Não existe URL de sala pública como no web (não há página para abrir
     // fora do app) — a mensagem carrega só o código, que é o que a mesa
     // precisa para digitar em "Entrar na sala".
-    const message = `Entra na minha sala do Jogo do Impostor. Código: ${room.code}`
+    const message = `Entra na minha sala no Impostor. Código: ${room.code}`
 
     // `Share.share` abre a folha nativa (WhatsApp direto) nos dois SOs — ao
     // contrário do web, que precisa checar `navigator.share` porque nem todo

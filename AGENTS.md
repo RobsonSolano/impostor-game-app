@@ -1,4 +1,4 @@
-# Jogo do Impostor — app mobile
+# Impostor — app mobile
 
 App React Native (Expo) do jogo de dedução social. Porte do `impostor` web
 (`../impostor`), mesma identidade visual, mesmo banco, mesmas regras — adaptado

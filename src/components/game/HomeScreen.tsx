@@ -139,11 +139,10 @@ export function HomeScreen() {
           </Card>
         </Animated.View>
 
-        <AppText variant="display" weight="bold" align="center">
-          Jogo do{' '}
-          <AppText variant="display" weight="bold" tone="primary">
-            Impostor
-          </AppText>
+        {/* Uma palavra só, toda no verde da marca: é o nome do app, e dividir
+            em duas cores só faria sentido se houvesse duas palavras. */}
+        <AppText variant="display" weight="bold" tone="primary" align="center">
+          Impostor
         </AppText>
         <AppText variant="body" tone="muted" align="center" style={styles.subtitle}>
           Todos recebem a mesma palavra secreta. Menos um. Conversem, desconfiem e votem.

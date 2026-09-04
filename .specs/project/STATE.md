@@ -1,4 +1,4 @@
-# STATE — Jogo do Impostor mobile
+# STATE — Impostor mobile
 
 Memória persistente do porte. Decisões, o que está verificado e como, e o que continua em aberto.
 

@@ -8,7 +8,7 @@ import type { ExpoConfig } from 'expo/config'
  * lê `process.env`.
  */
 const config: ExpoConfig = {
-  name: 'Jogo do Impostor',
+  name: 'Impostor',
   slug: 'impostor-app',
   version: '1.0.0',
   orientation: 'portrait',

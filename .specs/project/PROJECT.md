@@ -1,6 +1,6 @@
-# Jogo do Impostor — mobile
+# Impostor — mobile
 
-**Visão:** porte para React Native (Expo) do [Jogo do Impostor](../../../impostor) web — jogo de dedução social onde todos recebem a mesma palavra secreta, exceto um impostor que precisa blefar para não ser descoberto. Mesmo banco, mesmas regras, mesma identidade visual do web; a superfície nova é o celular, e o que o celular acrescenta é vibração como canal de informação.
+**Visão:** porte para React Native (Expo) do [Impostor](../../../impostor) web — jogo de dedução social onde todos recebem a mesma palavra secreta, exceto um impostor que precisa blefar para não ser descoberto. Mesmo banco, mesmas regras, mesma identidade visual do web; a superfície nova é o celular, e o que o celular acrescenta é vibração como canal de informação.
 
 **Para:** grupos de 3 a 12 pessoas, com celular. Serve tanto a mesa de bar (um aparelho passando de mão em mão, todos fisicamente juntos) quanto o grupo remoto (cada um com o seu, numa call ou no Discord) — com o fluxo idêntico nos dois casos.
 
