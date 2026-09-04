@@ -81,6 +81,14 @@ export const alpha = {
   danger60: 'rgba(244, 63, 94, 0.60)',
 
   warn15: 'rgba(245, 158, 11, 0.15)',
+  /**
+   * Borda em `warn`, para o card de votação indecisa.
+   *
+   * Existe porque `colors.warn` sólido numa borda de card grande grita mais que
+   * a informação que ele carrega — a votação não decidiu nada é aviso, não erro.
+   * Mesma proporção usada em `primary40`/`violet45`/`danger45`.
+   */
+  warn40: 'rgba(245, 158, 11, 0.40)',
 
   card60: 'rgba(18, 20, 26, 0.60)',
   card80: 'rgba(18, 20, 26, 0.80)',

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import Animated, { FadeInDown, LinearTransition, ZoomIn } from 'react-native-reanimated'
-import { Ban, MessagesSquare, PencilLine, RotateCcw, Vote } from 'lucide-react-native'
+import { Ban, MessagesSquare, PencilLine, RotateCcw, Scale, Vote } from 'lucide-react-native'
 import { AppText } from '@/components/ui/Text'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -11,9 +11,9 @@ import { PlayerAvatar } from '@/components/shared/PlayerAvatar'
 import { Countdown } from '@/components/shared/Countdown'
 import { WaitingPill } from '@/components/shared/WaitingPill'
 import { ClueDialog } from '@/components/game/ClueDialog'
-import { expireClueTurn, nextClueRound, openVoting } from '@/lib/game/actions'
+import { VotingOutcome } from '@/components/game/VotingOutcome'
+import { expireClueTurn, nextClueRound, openVoting, startClueRoundNow } from '@/lib/game/actions'
 import { toDisplayError } from '@/lib/game/errors'
-import { countOf } from '@/lib/plural'
 import { haptics } from '@/lib/haptics'
 import { alpha, colors } from '@/theme/colors'
 import { radius, space } from '@/theme/tokens'
@@ -21,13 +21,13 @@ import type { PhaseProps } from '@/components/game/types'
 import type { Player, RoundClue, VoteTally } from '@/lib/types'
 
 /**
- * Espelha `clue_turn_seconds` no banco: 15s para o primeiro da ordem (não tem
- * dica anterior para ler) e 20s para os seguintes, que na mesa é também o tempo
- * de comentar a dica que acabou de aparecer.
+ * Espelha `clue_turn_seconds` no banco. Quem manda no prazo é `turn_deadline`;
+ * isto só desenha a contagem.
  */
-function turnTotalMs(turnIndex: number) {
-  return turnIndex === 0 ? 15_000 : 20_000
-}
+const TURN_MS = 30_000
+
+/** Espelha `interval '10 seconds'` do anúncio de votação indecisa. (IMP-39) */
+const INTERLUDE_MS = 10_000
 
 type CluePhaseProps = PhaseProps & {
   clues: RoundClue[]
@@ -68,7 +68,9 @@ export function CluePhase({ room, players, me, isHost, clues }: CluePhaseProps) 
    */
   const [dismissedTurn, setDismissedTurn] = useState<string | null>(null)
   const expireRequested = useRef<string | null>(null)
+  const startRequested = useRef<string | null>(null)
   const wasMyTurn = useRef(false)
+  const wasAguardandoLargada = useRef(false)
   const seenAnsweredIds = useRef<Set<string> | null>(null)
 
   const byId = useMemo(() => new Map(players.map((player) => [player.id, player])), [players])
@@ -85,8 +87,16 @@ export function CluePhase({ room, players, me, isHost, clues }: CluePhaseProps) 
   const currentClue = roundClues.find((clue) => clue.turn_index === room.clue_turn_index)
   const currentPlayer = currentClue ? byId.get(currentClue.player_id) : undefined
 
+  /**
+   * Anúncio da votação indecisa segurando a largada. (IMP-39)
+   *
+   * Precisa ser checado ANTES de `turnsDone`: nos dois casos `turn_deadline` é
+   * nulo, e sem esta distinção a pausa seria lida como "todos já deram a dica".
+   */
+  const aguardandoLargada = room.clue_round_starts_at !== null
+
   // O banco zera `turn_deadline` quando não há mais turno a cumprir.
-  const turnsDone = room.turn_deadline === null
+  const turnsDone = !aguardandoLargada && room.turn_deadline === null
   const isMyTurn = !turnsDone && myClue?.turn_index === room.clue_turn_index
   const tally = room.last_vote_tally as VoteTally | null
 
@@ -112,6 +122,19 @@ export function CluePhase({ room, players, me, isHost, clues }: CluePhaseProps) 
     })
   }, [room.id, room.turn_deadline])
 
+  /**
+   * Larga a rodada quando os 10s do anúncio acabam. Mesmo padrão do turno
+   * vencido: o Postgres não dispara nada sozinho, e a função é idempotente.
+   */
+  const handleStart = useCallback(() => {
+    const at = room.clue_round_starts_at
+    if (!at || startRequested.current === at) return
+    startRequested.current = at
+    void startClueRoundNow(room.id).catch(() => {
+      // Outro cliente largou primeiro. O Realtime traz a ordem nova.
+    })
+  }, [room.id, room.clue_round_starts_at])
+
   // Chegou a SUA vez: a vibração mais importante do app inteiro. Só na
   // TRANSIÇÃO (comparada por ref), nunca a cada render — do contrário
   // qualquer novo render enquanto ainda é minha vez vibraria de novo.
@@ -121,6 +144,17 @@ export function CluePhase({ room, players, me, isHost, clues }: CluePhaseProps) 
     }
     wasMyTurn.current = isMyTurn
   }, [isMyTurn])
+
+  // A mesa acabou de votar e nada aconteceu: é a vibração que diz "olha a
+  // tela, tem explicação aqui". Só na TRANSIÇÃO para o anúncio, nunca a cada
+  // render — a fase de turnos já tem as próprias vibrações, e repetir aqui a
+  // cada render viraria borrão.
+  useEffect(() => {
+    if (aguardandoLargada && !wasAguardandoLargada.current) {
+      haptics.warn()
+    }
+    wasAguardandoLargada.current = aguardandoLargada
+  }, [aguardandoLargada])
 
   // Dica de outro jogador aparecendo na mesa: um toque curto. A primeira
   // leitura (montagem da fase) só registra o que já está na mesa sem vibrar —
@@ -182,6 +216,36 @@ export function CluePhase({ room, players, me, isHost, clues }: CluePhaseProps) 
     )
   }
 
+  // Anúncio da votação indecisa: a mesa lê o resultado e a rodada larga junto.
+  if (aguardandoLargada) {
+    return (
+      <PhaseShell
+        eyebrow={`Rodada ${room.discussion_round}`}
+        title={tally && tally.skip >= tally.top ? 'A mesa preferiu pular' : 'Deu empate na votação'}
+        subtitle="Ninguém foi suspeitado o suficiente para sair. A rodada de dicas recomeça em instantes."
+        aside={<Mesa room={room} players={players} me={me} />}
+      >
+        <Animated.View entering={FadeInDown} style={styles.interludeCard}>
+          <Scale size={40} color={colors.warn} />
+
+          <VotingOutcome tally={tally} players={players} round={room.discussion_round} bare />
+
+          <Countdown
+            key={room.clue_round_starts_at ?? 'sem-largada'}
+            deadline={room.clue_round_starts_at}
+            totalMs={INTERLUDE_MS}
+            onExpire={handleStart}
+            tone="primary"
+          />
+
+          <AppText tone="muted" variant="label">
+            Nova rodada de dicas começando…
+          </AppText>
+        </Animated.View>
+      </PhaseShell>
+    )
+  }
+
   const title = turnsDone
     ? 'Todos deram a dica'
     : isMyTurn
@@ -192,7 +256,9 @@ export function CluePhase({ room, players, me, isHost, clues }: CluePhaseProps) 
     ? isHost
       ? 'Você decide: mais uma rodada de dicas, ou já para a votação.'
       : 'O host decide se vem outra rodada de dicas ou a votação.'
-    : 'Enquanto o contador corre, comentem as dicas à vontade — o app não interrompe.'
+    : room.discussion_round > 1 && tally
+      ? 'A votação anterior não decidiu nada. Mais uma rodada de dicas e votem de novo.'
+      : 'Enquanto o contador corre, comentem as dicas à vontade — o app não interrompe.'
 
   return (
     <>
@@ -203,7 +269,7 @@ export function CluePhase({ room, players, me, isHost, clues }: CluePhaseProps) 
           key={turnKey}
           roomId={room.id}
           deadline={room.turn_deadline}
-          totalMs={turnTotalMs(room.clue_turn_index)}
+          totalMs={TURN_MS}
           onExpire={handleExpire}
           onDismiss={() => setDismissedTurn(turnKey)}
           open={!dismissed}
@@ -264,7 +330,7 @@ export function CluePhase({ room, players, me, isHost, clues }: CluePhaseProps) 
               <Countdown
                 key={room.turn_deadline ?? 'sem-prazo'}
                 deadline={room.turn_deadline}
-                totalMs={turnTotalMs(room.clue_turn_index)}
+                totalMs={TURN_MS}
                 onExpire={handleExpire}
                 shape="bar"
               />
@@ -287,13 +353,22 @@ export function CluePhase({ room, players, me, isHost, clues }: CluePhaseProps) 
               <Countdown
                 key={room.turn_deadline ?? 'sem-prazo'}
                 deadline={room.turn_deadline}
-                totalMs={turnTotalMs(room.clue_turn_index)}
+                totalMs={TURN_MS}
                 onExpire={handleExpire}
               />
             </Card>
           )
         }
       >
+        {/*
+          POR QUE a mesa voltou às dicas — no TOPO, antes do quadro.
+          Já existia, mas no fim do conteúdo: no celular ficava fora da tela, e
+          uma família jogando concluiu que o app tinha quebrado ao votar duas
+          vezes sem nada acontecer. A regra estava certa (empate não elimina); o
+          que faltou foi dizer isso.
+        */}
+        <VotingOutcome tally={tally} players={players} round={room.discussion_round} />
+
         <ClueBoard
           roundClues={roundClues}
           previous={previous}
@@ -301,19 +376,6 @@ export function CluePhase({ room, players, me, isHost, clues }: CluePhaseProps) 
           currentTurnIndex={room.clue_turn_index}
           turnsDone={turnsDone}
         />
-
-        {/* Só depois de um ciclo indeciso: explica POR QUE a mesa voltou às
-            dicas. */}
-        {room.discussion_round > 1 && tally && (
-          <Card>
-            <AppText weight="semibold">Votação anterior</AppText>
-            <AppText tone="muted" style={styles.previousVoteText}>
-              {tally.skip >= tally.top
-                ? `A maioria preferiu pular (${countOf(tally.skip, 'voto', 'votos')}). Ninguém foi eliminado.`
-                : 'Houve empate no topo. Ninguém foi eliminado.'}
-            </AppText>
-          </Card>
-        )}
       </PhaseShell>
     </>
   )
@@ -462,8 +524,18 @@ const styles = StyleSheet.create({
   expelledText: {
     maxWidth: 260,
   },
-  previousVoteText: {
-    marginTop: space[1],
+  /**
+   * Moldura do anúncio de votação indecisa. `Card` não tem tom `warn` (só
+   * plain/primary/violet/danger) — token direto em vez de valor solto.
+   */
+  interludeCard: {
+    alignItems: 'center',
+    gap: space[5],
+    borderRadius: radius['3xl'],
+    borderWidth: 1,
+    borderColor: alpha.warn40,
+    backgroundColor: alpha.warn15,
+    padding: space[8],
   },
   board: {
     gap: space[5],

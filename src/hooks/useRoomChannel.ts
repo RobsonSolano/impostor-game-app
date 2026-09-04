@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
-import { AppState, type AppStateStatus } from 'react-native'
 import { getSupabaseClient } from '@/lib/supabase/client'
+import { useKeepFresh } from '@/hooks/useKeepFresh'
 import { haptics } from '@/lib/haptics'
 import type { Player, Room, RoomStatus } from '@/lib/types'
 
@@ -37,13 +37,19 @@ function sortByJoin(players: Player[]) {
  * novo. Entre o fetch inicial e o canal ficar pronto existe uma janela em que um
  * UPDATE se perde — sem o refetch, um jogador ficaria preso na fase anterior.
  *
- * No celular existe uma segunda janela que o web não tinha: o SO pode suspender
- * o WebSocket com o app em segundo plano (tela apagada, app no bolso) sem avisar
- * ninguém. Por isso este hook também refaz o fetch quando o `AppState` volta
- * para `active` — ver o `useEffect` de assinatura mais abaixo.
+ * Mas fechar essa janela não basta: Realtime sozinho já congelou uma partida
+ * real, e no celular a condição do travamento é a rotina do jogo (o aparelho
+ * fica minutos na mesa com a tela apagada, e o SO suspende o socket sem avisar).
+ * Por isso o estado também é ressincronizado por `useKeepFresh` — na volta ao
+ * primeiro plano e por sondagem periódica. Ver o hook para o caso que originou
+ * isso.
  */
 export function useRoomChannel(roomId: string | null) {
   const [state, setState] = useState<ChannelState>(INITIAL)
+
+  // Rede de segurança contra evento de Realtime perdido: volta do segundo plano
+  // e sondagem periódica. Ver `useKeepFresh`.
+  const freshness = useKeepFresh(Boolean(roomId))
 
   // Evita setState depois do unmount quando o fetch termina tarde.
   const mounted = useRef(true)
@@ -167,25 +173,17 @@ export function useRoomChannel(roomId: string | null) {
         if (isConnected) void loadRoom()
       })
 
-    /**
-     * Refaz o fetch quando o app volta para primeiro plano.
-     *
-     * Diferente do web: aqui o WebSocket pode ter morrido em silêncio enquanto o
-     * app estava em segundo plano — o SO suspende sockets ociosos com a tela
-     * apagada, e o Supabase só percebe e reconecta depois. Até lá, qualquer
-     * UPDATE que aconteceu enquanto o celular estava no bolso nunca chegou, e sem
-     * este refetch o jogador voltaria e ficaria preso vendo a fase de antes.
-     */
-    const appStateSub = AppState.addEventListener('change', (next: AppStateStatus) => {
-      if (next === 'active') void loadRoom()
-    })
-
     return () => {
       mounted.current = false
-      appStateSub.remove()
       void supabase.removeChannel(channel)
     }
   }, [roomId])
+
+  // Ressincroniza quando o app volta ao primeiro plano ou a sondagem bate.
+  useEffect(() => {
+    if (!roomId || freshness === 0) return
+    void Promise.resolve().then(() => loadRoom())
+  }, [roomId, freshness])
 
   return state
 }

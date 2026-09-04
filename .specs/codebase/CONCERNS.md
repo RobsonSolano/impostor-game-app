@@ -6,7 +6,9 @@ Ordenado por risco real de estragar uma partida. Ver `.specs/project/STATE.md` p
 
 ### 1. Banco de produção não definido, e verificação de ponta a ponta pendente
 
-O `.env` deste checkout aponta para um projeto Supabase (`wpmkvthjthwgbfandeif`) que não existe mais — confirmado NXDOMAIN em 2026-09-03. Isso significa que **nenhuma partida real foi jogada neste app**: o que está verificado é typecheck, testes de lógica isolada e render no simulador, não o fluxo completo de Realtime + RPC + RLS contra um banco vivo, com dois celulares na mesma sala. É o maior risco do porte simplesmente porque é o que falta testar por completo, não porque algo específico esteja quebrado. Ver `.specs/project/STATE.md` para o que fazer antes de jogar de verdade.
+O app foi verificado numa **partida completa contra o banco vivo** (projeto `bbtsqjxcmlymwxcqvrmo`), em 2026-09-04: sala criada no emulador, dois jogadores entrando por Realtime, card secreto, turnos de dica, votação indecisa com o anúncio de 10s, votação decisiva, Última Chance e fim de jogo com o placar correto. O risco que estava aqui — "nenhuma partida real foi jogada" — deixou de existir.
+
+O que **continua** sem verificação é a mesa de verdade: dois ou mais **aparelhos físicos** na mesma sala, passando o celular de mão em mão. O teste foi com um emulador mais dois jogadores dirigidos por REST, o que prova Realtime e as RPCs, mas não prova a vibração (emulador não tem motor) nem o comportamento com a tela bloqueada por minutos entre turnos.
 
 ### 2. Expiração de prazo depende de um cliente vivo chamar a RPC
 

@@ -17,7 +17,7 @@ Memória persistente do porte. Decisões, o que está verificado e como, e o que
 
 ## O que continua em aberto
 
-- **Verificação de ponta a ponta contra um banco Supabase vivo.** Nunca foi testado criar sala, entrar com um segundo celular, trocar de fase por Realtime, votar e chegar ao resultado contra um projeto Supabase real. O `.env` deste checkout aponta para um projeto que não existe mais (ver abaixo) — isso bloqueia esse teste até um banco novo ser provisionado.
+- **Mesa de verdade, com dois ou mais aparelhos físicos.** A partida completa já foi jogada contra o banco vivo (ver o registro abaixo), mas com um emulador como jogador 1 e os outros dois dirigidos por REST. Isso prova Realtime, RPC e RLS; não prova a **vibração** (emulador não tem motor) nem o comportamento de passar o celular de mão em mão com a tela bloqueada minutos entre turnos — que é justamente a condição que o `useKeepFresh` existe para cobrir.
 - **Instalação num aparelho físico.** O projeto EAS existe (`eada121e-ff8e-4bf4-a8d7-cff45d0622f5`, conta `robsonsolano`), `eas.json` tem os perfis `development`/`preview`/`production`, e as credenciais do Supabase estão como variáveis de ambiente do EAS (`EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_ANON_KEY` nos três ambientes) em vez de fixadas no repositório — trocar de projeto Supabase é `eas env:update`, sem commit. O que falta é instalar o artefato num celular de verdade e sentir a vibração, que é o único jeito de validar a gamificação (emulador e simulador não têm motor de vibração).
 
 ## Decisões técnicas
@@ -48,13 +48,28 @@ Decisão deliberada, não uma pendência: o schema, as migrations, a RLS, as fun
 
 ## Blocker atual
 
-### 🔴 O banco de teste do web não existe mais
+Nenhum aberto.
 
-`.env` deste checkout aponta para `https://wpmkvthjthwgbfandeif.supabase.co` — o mesmo ref que estava em `.env.local` do `impostor` web. Consultado em 2026-09-03, o domínio devolve `NXDOMAIN` (confirmado com `dig`/`nslookup`): o projeto foi pausado ou apagado, provável efeito do plano gratuito do Supabase por inatividade.
+### ✅ 2026-09-04 — Banco novo, e o porte alcançou o web
 
-**Efeito prático:** nenhuma RPC, nenhum Realtime, nenhuma sessão anônima funciona contra este `.env` hoje. O app builda, typecheck passa, os testes passam (todos mockam o Supabase) e as telas renderizam — mas ninguém consegue de fato criar ou entrar numa sala.
+O projeto Supabase que estava no `.env` (`wpmkvthjthwgbfandeif`) foi apagado — o host devolvia `NXDOMAIN`, provável pausa por inatividade no plano gratuito. Projeto novo: **`bbtsqjxcmlymwxcqvrmo`**, com as migrations do web aplicadas e *Anonymous sign-ins* habilitado por `config push`.
 
-**Ação necessária antes de jogar de verdade:** provisionar um projeto Supabase novo (ou reativar um existente), aplicar as migrations de `../impostor/supabase/migrations/` (`npx supabase link` + `npx supabase db push`, rodado a partir do repositório web), habilitar *Anonymous sign-ins* no painel, e apontar `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_ANON_KEY` para o projeto novo.
+Ao sincronizar o repositório web descobri que ele havia avançado **4 commits** depois do porte, e o mobile estava atrás. Portado em 2026-09-04:
+
+- **Turno de dica virou 30s para todos** (era 15s no primeiro da ordem e 20s nos seguintes). O primeiro era justamente quem mais estourava o prazo, e uma regra só é mais fácil de anunciar na mesa.
+- **IMP-39 — anúncio de votação indecisa.** Campo novo `rooms.clue_round_starts_at`: quando não é nulo, a rodada está em pausa de 10s mostrando por que a votação não decidiu nada, e larga sozinha depois. A ordem de checagem importa e está comentada no código: `aguardandoLargada` tem que ser avaliado ANTES de `turnsDone`, porque nos dois casos `turn_deadline` é nulo — invertido, a pausa é lida como "todos já deram a dica".
+- **`VotingOutcome`** com nomes e contagem, no TOPO do conteúdo. No web nasceu de bug de campo: uma família votou duas vezes, nada aconteceu e concluíram que o app tinha quebrado. A regra estava certa (empate não elimina); faltava dizer isso, e no celular o aviso antigo caía fora da tela.
+- **`useKeepFresh`** — rede de segurança contra evento de Realtime perdido, que já congelou uma partida real. A versão web usa `document.visibilityState` e eventos de `window`; a mobile usa `AppState` mais sondagem periódica de 8s. Ficou sem o gatilho de "rede voltou" de propósito: exigiria `@react-native-community/netinfo`, e a sondagem cobre o mesmo caso com 8s de atraso.
+- **IMP-38** (rodízio do impostor por peso quadrático) é só banco; no cliente entrou apenas nos tipos.
+
+**Verificado em partida completa contra o banco vivo** (emulador Android como jogador 1, dois jogadores por REST): Realtime trazendo os jogadores ao lobby sem recarregar, card secreto no hold, turno de 30s, votação em "pular" → anúncio → largada automática → votação decisiva → fim de jogo com placar certo.
+
+Dois bugs que só a partida real revelou, e que nenhum teste pegava:
+
+- **`RoomExitButton` cobrindo o título em toda tela do jogo.** O `Button` com `fullWidth={false}` fixa `alignSelf: 'flex-start'`, e `alignSelf` no filho vence o `alignItems: 'flex-end'` do invólucro — o botão ia para a esquerda, por cima do título, com fundo opaco. Medido no dump de acessibilidade: título em x=53–734 e o botão em x=158–318. Corrigido com `alignSelf` explícito no consumidor, e a armadilha documentada na primitiva.
+- **Confete invisível no fim de jogo.** Renderizado ANTES do `PhaseShell`, era pintado por baixo da tela opaca (irmãos em RN pintam na ordem em que aparecem). Corrigido movendo para depois, com `zIndex`.
+
+**Lição:** projeto Supabase gratuito parado é apagado, e `dig` no host do `.env` é o primeiro diagnóstico quando o login anônimo começa a falhar por "rede".
 
 ## Lições herdadas do web (valem aqui também)
 

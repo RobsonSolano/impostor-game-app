@@ -104,6 +104,7 @@ jest.mock('@/lib/game/actions', () => ({
   expireClueTurn: jest.fn(() => Promise.resolve()),
   nextClueRound: jest.fn(() => Promise.resolve()),
   openVoting: jest.fn(() => Promise.resolve()),
+  startClueRoundNow: jest.fn(() => Promise.resolve()),
 }))
 
 jest.mock('@/lib/haptics', () => ({
@@ -130,6 +131,10 @@ jest.mock('@/lib/haptics', () => ({
 function makeRoom(overrides: Partial<Room> = {}): Room {
   return {
     active_round_id: 'round-1',
+    // Presente na base mesmo valendo `null`: sem isto o spread de
+    // `Partial<Room>` deixa o campo `string | null | undefined` e a fábrica
+    // para de satisfazer `Room`.
+    clue_round_starts_at: null,
     clue_turn_index: 0,
     code: 'AB12',
     created_at: '2026-09-03T12:00:00.000Z',
@@ -297,5 +302,47 @@ describe('CluePhase', () => {
       <CluePhase room={{ ...room2 }} players={players} me={me} isHost={false} clues={clues2} />,
     )
     expect(haptics.suspense).toHaveBeenCalledTimes(1)
+  })
+
+  it('com clue_round_starts_at preenchido, mostra o anúncio da votação indecisa e NÃO o quadro de turno (regressão da ordem de checagem)', () => {
+    const me = makePlayer({ id: 'player-1' })
+    const players = [
+      me,
+      makePlayer({ id: 'player-2', name: 'Ana' }),
+      makePlayer({ id: 'player-3', name: 'Papai' }),
+    ]
+
+    // Empate anunciado, esperando a largada da rodada seguinte: `turn_deadline`
+    // é nulo AQUI TAMBÉM (mesmo estado que "turnos concluídos"), e é
+    // `clue_round_starts_at` que distingue os dois casos.
+    const room = makeRoom({
+      discussion_round: 2,
+      clue_turn_index: 0,
+      turn_deadline: null,
+      clue_round_starts_at: new Date(Date.now() + 10_000).toISOString(),
+      last_vote_tally: {
+        cycle: 0,
+        skip: 0,
+        top: 2,
+        players: { 'player-2': 2, 'player-3': 2 },
+      },
+    })
+
+    render(<CluePhase room={room} players={players} me={me} isHost={false} clues={[]} />)
+
+    // A tela do anúncio apareceu.
+    expect(screen.getByText('Deu empate na votação')).toBeTruthy()
+    expect(screen.getByText('Nova rodada de dicas começando…')).toBeTruthy()
+
+    // O quadro de turno NÃO apareceu. Se a ordem de checagem inverter,
+    // `turnsDone` leria `turn_deadline === null` como "acabou" e mostraria
+    // "Todos deram a dica" com as ações de host em vez do anúncio.
+    expect(screen.queryByText('Todos deram a dica')).toBeNull()
+    expect(screen.queryByText('Abrir votação')).toBeNull()
+    expect(screen.queryByText('Nova rodada de dicas')).toBeNull()
+
+    // A mesa acabou de votar e nada aconteceu: a vibração de aviso dispara
+    // uma vez, na transição para o anúncio.
+    expect(haptics.warn).toHaveBeenCalledTimes(1)
   })
 })

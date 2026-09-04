@@ -158,6 +158,15 @@ export function Button({
 
 const styles = StyleSheet.create({
   fullWidth: { width: '100%' },
+  /**
+   * `fullWidth={false}` abraça o conteúdo, e para isso precisa de `alignSelf`
+   * (em coluna, o padrão do flex é esticar).
+   *
+   * ARMADILHA: isto ANCORA o botão à esquerda, e `alignSelf` no filho vence o
+   * `alignItems` do pai — então pôr o botão num container `alignItems:
+   * 'flex-end'` não o move para a direita. Quem quer outro alinhamento passa
+   * `alignSelf` pela prop `style`, que é aplicada depois desta.
+   */
   autoWidth: { alignSelf: 'flex-start' },
   base: {
     flexDirection: 'row',

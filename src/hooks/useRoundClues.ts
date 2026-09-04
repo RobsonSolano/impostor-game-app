@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { getSupabaseClient } from '@/lib/supabase/client'
+import { useKeepFresh } from '@/hooks/useKeepFresh'
 import type { RoundClue } from '@/lib/types'
 
 type CluesState = {
@@ -36,6 +37,11 @@ function sortByTurn(clues: RoundClue[]) {
  */
 export function useRoundClues(roundId: string | null) {
   const [state, setState] = useState<CluesState>({ roundId: null, clues: [] })
+
+  // Mesma rede de segurança da sala: se o evento da ordem sorteada se perde,
+  // ninguém descobre de quem é a vez — e foi exatamente assim que uma partida
+  // real travou. Ver `useKeepFresh`.
+  const freshness = useKeepFresh(Boolean(roundId))
   const mounted = useRef(true)
 
   const loadClues = useEffectEvent(async () => {
@@ -109,6 +115,11 @@ export function useRoundClues(roundId: string | null) {
       void supabase.removeChannel(channel)
     }
   }, [roundId])
+
+  useEffect(() => {
+    if (!roundId || freshness === 0) return
+    void Promise.resolve().then(() => loadClues())
+  }, [roundId, freshness])
 
   return state.roundId === roundId ? state.clues : EMPTY
 }

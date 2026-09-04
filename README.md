@@ -69,27 +69,18 @@ npm run verify         # typecheck + lint + test
 npx expo-doctor         # sanidade de dependências nativas
 ```
 
-## Aviso importante e honesto sobre o banco
+## O banco é do repositório web
 
 Este app **não é dono de banco nenhum**. Por isso não existe pasta `supabase/` aqui — as migrations, a RLS e as funções SQL vivem em `../impostor`, que é quem define o schema. Este repositório é só cliente: lê estado, chama RPC, mostra tela.
 
-O app está completo, e verificado por:
+Projeto Supabase em uso: `bbtsqjxcmlymwxcqvrmo`. As 8 migrations do web estão aplicadas nele e *Anonymous sign-ins* está habilitado (sem isso `signInAnonymously()` volta 422 e ninguém entra em sala). Para apontar para outro projeto, mude `.env` no local e as variáveis de ambiente do EAS nos builds — nada de credencial fica no repositório.
 
-- `npm run typecheck` limpo e `npm run lint` sem erros;
-- a suíte do Jest passando (ver `.specs/codebase/TESTING.md` para o número exato);
-- render no simulador iOS e no emulador Android;
-- **interação real no emulador Android**, dirigida por `adb`: digitar o nome habilita o CTA, o código digitado em minúsculas é normalizado para maiúsculas, a troca de aba preserva o nome, e o erro de rede aparece na tela em PT-BR em vez de derrubar o app;
-- **as seis telas de fase fotografadas em aparelho** (lobby, revelação, dicas com o popup aberto, votação, última chance, drumroll e desfecho), conferidas contra o web — incluindo as duas garantias que mais importam: a palavra secreta **não** aparece antes do hold, e o resultado **não** aparece durante o drumroll.
+## Verificação
 
-**O que ainda não foi verificado é a partida de ponta a ponta contra um banco Supabase vivo** — Realtime, RPC e RLS reais, com dois ou mais celulares na mesma sala.
-
-O `.env` deste checkout aponta para o ref `wpmkvthjthwgbfandeif.supabase.co`, que era o banco de teste do `impostor` web — e esse projeto **não existe mais** (o domínio devolve NXDOMAIN; o projeto foi provavelmente pausado ou apagado no plano gratuito do Supabase). Para rodar o jogo de verdade é preciso:
-
-1. Ter (ou criar) um projeto Supabase com as migrations de [`../impostor/supabase/migrations/`](../impostor/supabase/migrations/) aplicadas (`npx supabase link` + `npx supabase db push` a partir do repositório web, que é o dono do schema).
-2. Habilitar **Anonymous sign-ins** em Authentication → Sign In / Providers no painel do Supabase. Sem isso, `signInAnonymously()` volta 422 e ninguém entra em sala — é o tropeço número 1 em qualquer setup novo, mobile ou web.
-3. Preencher `EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_ANON_KEY` no `.env` com as credenciais desse projeto.
-
-Sem isso, o app builda, os testes passam e as telas renderizam — mas ninguém consegue de fato criar ou entrar numa sala.
+- `npm run typecheck` limpo, `npm run lint` sem erros, suíte Jest passando (ver `.specs/codebase/TESTING.md`), `npx expo-doctor` 21/21.
+- **Partida completa jogada contra o banco de verdade**, com o emulador Android como jogador 1 e dois jogadores dirigidos por REST: criar sala → os dois entrando e aparecendo no lobby **por Realtime, sem recarregar** → iniciar → card secreto revelado no hold → turnos de dica de 30s → votação em "pular" → anúncio de votação indecisa → rodada nova largando sozinha em 10s → votação decisiva → Última Chance → fim de jogo com o placar certo (verdadeiros +1 cada, impostor pego 0).
+- As duas garantias que teste com mock não prova, conferidas no aparelho: a palavra secreta **não** está na árvore de views antes do hold (conferido no dump de acessibilidade do Android, não em screenshot), e o resultado **não** aparece durante o drumroll.
+- `rooms` conferido durante a partida: `revealed_word` e `revealed_impostor_id` continuam `null` até o fim, e cada jogador lê só a própria linha em `player_cards`.
 
 ## Três armadilhas que já custaram tempo
 

@@ -125,6 +125,16 @@ const styles = StyleSheet.create({
   button: {
     borderRadius: radius.full,
     backgroundColor: colors.card,
+    /**
+     * `alignSelf` explícito, mesmo com o invólucro já pedindo `flex-end`.
+     *
+     * O `Button` com `fullWidth={false}` fixa `alignSelf: 'flex-start'` para
+     * abraçar o conteúdo, e `alignSelf` no filho SEMPRE vence o `alignItems` do
+     * pai. Sem esta linha o botão ia para a esquerda e caía por cima do título
+     * da fase — o texto simplesmente desaparecia atrás da pílula opaca, em toda
+     * tela do jogo.
+     */
+    alignSelf: 'flex-end',
   },
   error: {
     maxWidth: 192,

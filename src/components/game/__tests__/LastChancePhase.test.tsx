@@ -91,6 +91,10 @@ jest.mock(
 function makeRoom(overrides: Partial<Room> = {}): Room {
   return {
     active_round_id: 'round-1',
+    // Presente na base mesmo valendo `null`: sem isto o spread de
+    // `Partial<Room>` deixa o campo `string | null | undefined` e a fábrica
+    // para de satisfazer `Room`.
+    clue_round_starts_at: null,
     clue_turn_index: 0,
     code: 'ABCD',
     created_at: '2026-09-03T12:00:00.000Z',
