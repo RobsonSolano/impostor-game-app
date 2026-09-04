@@ -135,6 +135,8 @@ function makeRoom(overrides: Partial<Room> = {}): Room {
     // `Partial<Room>` deixa o campo `string | null | undefined` e a fábrica
     // para de satisfazer `Room`.
     clue_round_starts_at: null,
+    is_public: false,
+    title: null,
     clue_turn_index: 0,
     code: 'AB12',
     created_at: '2026-09-03T12:00:00.000Z',

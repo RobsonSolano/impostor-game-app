@@ -17,6 +17,30 @@ export type JoinResult = {
   code: string
 }
 
+/** Opções de visibilidade na criação da sala. (IMP-40) */
+export type CreateRoomOptions = {
+  /** Sala pública aparece na lista de salas abertas. Default: privada. */
+  isPublic?: boolean
+  /** Nome da sala, 3 a 30 caracteres. Só serve para achá-la na lista. */
+  title?: string
+}
+
+/**
+ * Uma linha da lista de salas abertas.
+ *
+ * É a PROJEÇÃO que `list_public_rooms` devolve, e ela é deliberadamente magra:
+ * nada de `rooms.id`, nada de estado de partida. O identificador público do jogo
+ * é o código de 4 letras, que é o que `join_room` consome. Ver o comentário da
+ * função no banco antes de querer mais campos aqui.
+ */
+export type PublicRoom = {
+  code: string
+  title: string | null
+  host_name: string | null
+  players: number
+  created_at: string
+}
+
 /**
  * Retorno de `submit_clue`.
  *

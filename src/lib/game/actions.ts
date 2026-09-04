@@ -1,5 +1,11 @@
 import { ensureAnonSession, getSupabaseClient } from '@/lib/supabase/client'
-import type { ClueResult, GuessResult, JoinResult } from '@/lib/types'
+import type {
+  ClueResult,
+  CreateRoomOptions,
+  GuessResult,
+  JoinResult,
+  PublicRoom,
+} from '@/lib/types'
 
 /**
  * Ações do jogo.
@@ -22,11 +28,40 @@ async function callRpc<T>(builder: PromiseLike<{ data: T; error: unknown }>): Pr
   return data
 }
 
-export async function createRoom(name: string): Promise<JoinResult> {
+export async function createRoom(
+  name: string,
+  options: CreateRoomOptions = {},
+): Promise<JoinResult> {
   await ensureAnonSession()
   const supabase = getSupabaseClient()
-  const data = await callRpc(supabase.rpc('create_room', { p_name: name }))
+  const data = await callRpc(
+    supabase.rpc('create_room', {
+      p_name: name,
+      p_is_public: options.isPublic ?? false,
+      // `undefined` e não `null`: o PostgREST omite a chave e o default do banco
+      // (null) vale. Mandar null explícito também funcionaria, mas depender do
+      // default deixa a intenção num lugar só — o banco.
+      p_title: options.title || undefined,
+    }),
+  )
   return data as unknown as JoinResult
+}
+
+/**
+ * Lista as salas abertas em LOBBY. (IMP-40)
+ *
+ * Não é `select` em `rooms`: a policy daquela tabela é "sou membro desta sala",
+ * e afrouxá-la vazaria as colunas de segredo da partida (RLS filtra linha, não
+ * coluna). A listagem vem de uma função com projeção explícita de colunas
+ * seguras — ver `list_public_rooms` no banco.
+ */
+export async function listPublicRooms(search?: string): Promise<PublicRoom[]> {
+  await ensureAnonSession()
+  const supabase = getSupabaseClient()
+  const data = await callRpc(
+    supabase.rpc('list_public_rooms', { p_search: search?.trim() || undefined }),
+  )
+  return (data ?? []) as unknown as PublicRoom[]
 }
 
 export async function joinRoom(code: string, name: string): Promise<JoinResult> {
