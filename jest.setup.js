@@ -82,3 +82,23 @@ jest.mock('expo-in-app-updates', () => ({
   checkAndStartUpdate: jest.fn(() => Promise.resolve(false)),
   addUpdateListener: jest.fn(() => () => {}),
 }))
+
+/**
+ * SDK do AdMob: nativo, não existe no Jest. Mockado com `loaded: false` — o
+ * estado honesto em teste, e o caminho que prova que a navegação NÃO depende do
+ * anúncio.
+ */
+jest.mock('react-native-google-mobile-ads', () => ({
+  MobileAds: () => ({ initialize: jest.fn(() => Promise.resolve()) }),
+  AdEventType: { LOADED: 'loaded', CLOSED: 'closed', ERROR: 'error' },
+  TestIds: { INTERSTITIAL: 'test-interstitial' },
+  InterstitialAd: {
+    createForAdRequest: jest.fn(() => ({
+      addAdEventListener: jest.fn(() => () => {}),
+      load: jest.fn(),
+      show: jest.fn(() => Promise.resolve()),
+      loaded: false,
+    })),
+  },
+  AdsConsent: { gatherConsent: jest.fn(() => Promise.resolve()) },
+}))

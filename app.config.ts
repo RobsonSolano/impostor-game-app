@@ -67,6 +67,29 @@ const config: ExpoConfig = {
   plugins: [
     'expo-router',
     [
+      /**
+       * AdMob. Um interstitial só, na criação de sala (ver `src/lib/ads.ts`).
+       *
+       * Os App IDs entram no manifest em tempo de BUILD, então precisam vir da
+       * config e não podem ser lidos em runtime. O padrão são os IDs de exemplo
+       * do Google de propósito: o SDK do AdMob **derruba o app na abertura** se o
+       * App ID estiver ausente ou malformado, então um placeholder inventado
+       * seria pior que anúncio nenhum.
+       *
+       * Para valer, definir EXPO_PUBLIC_ADMOB_ANDROID_APP_ID (e o de iOS) nas
+       * variáveis do EAS — mesma via das credenciais do Supabase.
+       */
+      'react-native-google-mobile-ads',
+      {
+        androidAppId:
+          process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID ??
+          'ca-app-pub-3940256099942544~3347511713',
+        iosAppId:
+          process.env.EXPO_PUBLIC_ADMOB_IOS_APP_ID ??
+          'ca-app-pub-3940256099942544~1458002511',
+      },
+    ],
+    [
       'expo-splash-screen',
       {
         backgroundColor: '#07080b',
@@ -85,6 +108,7 @@ const config: ExpoConfig = {
   extra: {
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    admobInterstitial: process.env.EXPO_PUBLIC_ADMOB_INTERSTITIAL_ANDROID,
     eas: {
       // Fixo, e não vindo de `process.env`: este id amarra o repositório ao
       // projeto no EAS. Vindo do ambiente, um build feito de outra máquina (ou de

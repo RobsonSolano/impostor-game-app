@@ -106,7 +106,15 @@ faz, e que a política tem que dizer:
   aparelho.
 - Guarda, enquanto a sala existe: o **apelido** digitado, a cor de avatar
   sorteada, as **dicas escritas** e os votos.
-- Não coleta contatos, localização, identificadores de publicidade nem dados de
-  uso para anúncios. Não há terceiros de analytics no app.
+- **Exibe anúncio** (Google AdMob), um único interstitial no momento em que o
+  host cria a sala. Para isso o SDK do Google acessa o **identificador de
+  publicidade do aparelho** e dados de dispositivo. Isso **precisa** estar
+  declarado no formulário de Segurança dos Dados da Play e na política — é o item
+  que muda o formulário de "não coleta nada" para "coleta e compartilha com
+  terceiro".
+- O consentimento é coletado pela UMP do próprio Google antes da primeira
+  requisição de anúncio.
+- Não coleta contatos, localização nem dados de uso próprios. Não há analytics
+  de terceiros além do necessário ao AdMob.
 - A `anon key` do Supabase é pública por design; o acesso aos dados é restrito
   por RLS no banco (cada jogador só lê a própria linha do card secreto).

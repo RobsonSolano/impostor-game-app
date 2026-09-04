@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg'
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
 import { Screen } from '@/components/shared/Screen'
 import { UpdatePrompt } from '@/components/shared/UpdatePrompt'
+import { iniciarAnuncios, mostrarInterstitial, precarregar } from '@/lib/ads'
 import { colors } from '@/theme/colors'
 import { TOUCH_TARGET, radius, space } from '@/theme/tokens'
 import { haptics } from '@/lib/haptics'
@@ -50,6 +51,19 @@ export function HomeScreen() {
   // redigitar sem completar, ensinaria o dedo a ignorar a vibração.
   const prevCodeLength = useRef(0)
 
+  /**
+   * Prepara o anúncio da criação de sala enquanto o host ainda digita o nome.
+   *
+   * Pré-carregar aqui é o que faz o anúncio aparecer sem espera perceptível: se
+   * o download só começasse ao tocar em "Criar sala", o host ficaria olhando
+   * tela parada com a sala JÁ criada — a pior ordem possível. Inerte em dev e no
+   * Expo Go (o SDK é nativo).
+   */
+  useEffect(() => {
+    void iniciarAnuncios()
+    precarregar()
+  }, [])
+
   const canSubmit =
     isValidNickname(name) && (mode === 'criar' || isValidRoomCode(code)) && !busy
 
@@ -85,6 +99,21 @@ export function HomeScreen() {
       const result =
         mode === 'criar' ? await createRoom(cleanName) : await joinRoom(code, cleanName)
       haptics.success()
+
+      /*
+       * ORDEM IMPORTA: a sala já está criada neste ponto.
+       *
+       * O anúncio é uma pausa antes de navegar, nunca um pré-requisito — se
+       * viesse antes da RPC, um carregamento lento pareceria travamento e o host
+       * acharia que a sala não foi criada. E só na CRIAÇÃO: quem entra numa sala
+       * já existente está sendo esperado pela mesa, e fazer essa pessoa ver
+       * anúncio atrasaria a partida dos outros.
+       *
+       * `mostrarInterstitial` resolve sempre (por fechamento, erro ou prazo),
+       * então a navegação abaixo nunca fica presa.
+       */
+      if (mode === 'criar') await mostrarInterstitial()
+
       router.push(`/sala/${result.code}`)
     } catch (err) {
       haptics.error()
