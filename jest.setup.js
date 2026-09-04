@@ -56,3 +56,29 @@ jest.mock('expo-constants', () => ({
  * JS puro — é o caminho documentado pelo projeto Reanimated para testes.
  */
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'))
+
+/**
+ * `expo-updates` e `expo-in-app-updates` são módulos NATIVOS: o require deles
+ * quebra no Jest, que não tem TurboModule. Mockados aqui, e não em cada teste,
+ * porque quem os importa é a `HomeScreen` — qualquer teste que a monte tropeça.
+ *
+ * `isEnabled: false` é o estado honesto no ambiente de teste (e em dev): é assim
+ * que `useAppUpdate` fica inerte, que é o comportamento correto fora de um build
+ * de verdade. Teste que queira o caminho ativo sobrescreve localmente.
+ */
+jest.mock('expo-updates', () => ({
+  isEnabled: false,
+  checkForUpdateAsync: jest.fn(() => Promise.resolve({ isAvailable: false })),
+  fetchUpdateAsync: jest.fn(() => Promise.resolve({ isNew: false })),
+  reloadAsync: jest.fn(() => Promise.resolve()),
+}))
+
+jest.mock('expo-in-app-updates', () => ({
+  AppUpdateType: { FLEXIBLE: 0, IMMEDIATE: 1 },
+  checkForUpdate: jest.fn(() =>
+    Promise.resolve({ updateAvailable: false, storeVersion: '1.0.0' }),
+  ),
+  startUpdate: jest.fn(() => Promise.resolve(true)),
+  checkAndStartUpdate: jest.fn(() => Promise.resolve(false)),
+  addUpdateListener: jest.fn(() => () => {}),
+}))

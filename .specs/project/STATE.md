@@ -18,9 +18,34 @@ Memória persistente do porte. Decisões, o que está verificado e como, e o que
 ## O que continua em aberto
 
 - **Mesa de verdade, com dois ou mais aparelhos físicos.** A partida completa já foi jogada contra o banco vivo (ver o registro abaixo), mas com um emulador como jogador 1 e os outros dois dirigidos por REST. Isso prova Realtime, RPC e RLS; não prova a **vibração** (emulador não tem motor) nem o comportamento de passar o celular de mão em mão com a tela bloqueada minutos entre turnos — que é justamente a condição que o `useKeepFresh` existe para cobrir.
+- **O aviso de atualização nativa só pode ser validado depois da primeira publicação.** A In-App Updates API consulta a Play sobre o pacote instalado, então num APK instalado à mão `checkForUpdate()` falha e o app segue sem avisar (o fallback correto). Validar de ponta a ponta exige duas versões na faixa de teste interno.
+- **Publicação na Play Store depende de ação no Console.** Conta de desenvolvedor, app criado com o mesmo `package`, conta de serviço para `eas submit`, e a ficha da loja (incluindo política de privacidade, que a Play exige mesmo sem login — e este app cria sessão anônima). O repositório já tem o perfil `production` (AAB) e o bloco `submit`.
 - **Instalação num aparelho físico.** O projeto EAS existe (`eada121e-ff8e-4bf4-a8d7-cff45d0622f5`, conta `robsonsolano`), `eas.json` tem os perfis `development`/`preview`/`production`, e as credenciais do Supabase estão como variáveis de ambiente do EAS (`EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_ANON_KEY` nos três ambientes) em vez de fixadas no repositório — trocar de projeto Supabase é `eas env:update`, sem commit. O que falta é instalar o artefato num celular de verdade e sentir a vibração, que é o único jeito de validar a gamificação (emulador e simulador não têm motor de vibração).
 
 ## Decisões técnicas
+
+### 2026-09-04 — OTA com `runtimeVersion: appVersion`, e a loja como fonte da versão nativa
+
+`expo-updates` configurado com política de runtime `appVersion`: OTA só alcança
+quem está na mesma versão nativa. Isso fecha o pior cenário de OTA — mandar JS que
+chama módulo nativo ausente, o app abrir e fechar, e o jogador não ter como voltar
+porque o bundle ruim já está gravado.
+
+O efeito colateral é que subir a `version` corta o OTA dos clientes antigos **sem
+que eles saibam**. Resolvido com aviso de atualização nativa via In-App Updates API
+do Google Play (`expo-in-app-updates`), e não com uma tabela de versão nossa: a
+loja já sabe a resposta, e uma tabela nossa seria mais um lugar para ficar
+dessincronizado — inclusive durante revisão da Play, quando a versão existe mas
+ainda não está disponível.
+
+Decisões de comportamento (todas com teste): nativa vence OTA quando as duas
+aparecem; OTA só é anunciada depois de baixada; nada é aplicado sozinho; o aviso
+vive só na tela inicial; update flexível e não imediato; e falha de checagem é
+silêncio, porque atualização é conveniência e não pode atrapalhar quem só quer
+jogar.
+
+Ver `.specs/codebase/UPDATES.md` para o passo a passo e o que depende do Play
+Console.
 
 ### 2026-09 — StyleSheet + tokens em vez de NativeWind
 

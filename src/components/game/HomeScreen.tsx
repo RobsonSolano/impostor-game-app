@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
 import { Screen } from '@/components/shared/Screen'
+import { UpdatePrompt } from '@/components/shared/UpdatePrompt'
 import { colors } from '@/theme/colors'
 import { TOUCH_TARGET, radius, space } from '@/theme/tokens'
 import { haptics } from '@/lib/haptics'
@@ -110,6 +111,14 @@ export function HomeScreen() {
         />
       }
     >
+      {/*
+        Aviso de atualização, e só aqui: as ações dele interrompem o app
+        (reiniciar, ou sair para a loja), e na tela inicial não há partida para
+        atrapalhar. Acima do herói porque um aviso que precisa de rolagem para
+        ser visto não é aviso.
+      */}
+      <UpdatePrompt />
+
       <View style={styles.hero}>
         {/* Renderizado ANTES dos irmãos de propósito: em RN, ordem de
             montagem decide empilhamento sem precisar de z-index negativo. */}

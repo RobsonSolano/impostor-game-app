@@ -69,6 +69,33 @@ npm run verify         # typecheck + lint + test
 npx expo-doctor         # sanidade de dependências nativas
 ```
 
+Build e publicação:
+
+```bash
+npx eas-cli build --platform android --profile preview      # APK para instalar à mão
+npx eas-cli build --platform android --profile production   # AAB para a Play Store
+npx eas-cli update --branch production -m "o que mudou"     # OTA (só JavaScript)
+```
+
+## Atualização: OTA e loja
+
+O app tem as duas, e elas resolvem coisas diferentes. **OTA** (`expo-updates`)
+troca só o JavaScript e chega sozinha; **nativa** troca o binário e é a única que
+entrega módulo nativo novo.
+
+`runtimeVersion` é `appVersion`, então OTA só alcança quem está na mesma versão
+nativa — e quando a `version` sobe, os clientes antigos param de receber OTA sem
+ter como saber. É isso que o aviso de atualização nativa resolve: ele pergunta à
+**própria Google Play** se existe versão nova (In-App Updates API), sem tabela de
+versão nossa para manter em sincronia com a loja.
+
+O aviso aparece **só na tela inicial**, nunca no meio de uma partida: as duas
+ações dele interrompem o app (reiniciar, ou sair para a loja), e no meio do jogo
+isso derruba o jogador da sala e parece queda de conexão para a mesa.
+
+Detalhes, decisões e o passo a passo de publicação em
+[`.specs/codebase/UPDATES.md`](.specs/codebase/UPDATES.md).
+
 ## O banco é do repositório web
 
 Este app **não é dono de banco nenhum**. Por isso não existe pasta `supabase/` aqui — as migrations, a RLS e as funções SQL vivem em `../impostor`, que é quem define o schema. Este repositório é só cliente: lê estado, chama RPC, mostra tela.

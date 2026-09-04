@@ -40,6 +40,30 @@ const config: ExpoConfig = {
   web: {
     favicon: './assets/favicon.png',
   },
+  /**
+   * OTA (EAS Update).
+   *
+   * `runtimeVersion` com política `appVersion`: o runtime é a própria `version`
+   * do app, então uma atualização OTA só chega a quem está na MESMA versão
+   * nativa. É o que impede o pior cenário de OTA — mandar JS que chama um módulo
+   * nativo que o aparelho não tem, e o app abrir e fechar na cara do jogador.
+   *
+   * Consequência a entender: subir a `version` significa que os clientes antigos
+   * param de receber OTA e passam a precisar de atualização pela loja. É
+   * justamente por isso que existe o aviso de atualização nativa (ver
+   * `src/hooks/useAppUpdate.ts`), que usa a In-App Updates API do próprio Google
+   * Play — a loja é a fonte de verdade da versão nativa, não uma tabela nossa.
+   */
+  updates: {
+    url: 'https://u.expo.dev/eada121e-ff8e-4bf4-a8d7-cff45d0622f5',
+    // Não bloqueia a abertura esperando a rede: o app sobe com o bundle que já
+    // tem e a atualização é aplicada na próxima abertura. Num jogo de mesa,
+    // segurar a splash por causa de rede ruim é pior que abrir desatualizado.
+    fallbackToCacheTimeout: 0,
+  },
+  runtimeVersion: {
+    policy: 'appVersion',
+  },
   plugins: [
     'expo-router',
     [

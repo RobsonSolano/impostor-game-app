@@ -43,3 +43,6 @@ yarn-error.*
 # Ambiente
 .env
 .env.local
+
+# Credencial de publicação da Play Store (conta de serviço do Google)
+play-service-account.json
