@@ -46,3 +46,6 @@ yarn-error.*
 
 # Credencial de publicação da Play Store (conta de serviço do Google)
 play-service-account.json
+
+# Handoff de sessao (temporario, nunca versionado)
+context-tmp.md
